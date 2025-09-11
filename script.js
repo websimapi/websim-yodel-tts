@@ -1,10 +1,10 @@
 const textInput = document.getElementById('text-input');
-const yodelButton = document.getElementById('yodel-button');
+const wobbleButton = document.getElementById('wobble-button');
 const loader = document.getElementById('loader');
 const errorMessage = document.getElementById('error-message');
 
 let audioContext;
-let isYodeling = false;
+let isWobbling = false;
 
 // Initialize AudioContext on user interaction
 function initAudioContext() {
@@ -13,20 +13,20 @@ function initAudioContext() {
     }
 }
 
-yodelButton.addEventListener('click', () => {
+wobbleButton.addEventListener('click', () => {
     const text = textInput.value.trim();
-    if (text && !isYodeling) {
+    if (text && !isWobbling) {
         initAudioContext();
-        yodelifyText(text);
+        wobblifyText(text);
     }
 });
 
-function toggleUI(yodeling) {
-    isYodeling = yodeling;
-    yodelButton.disabled = yodeling;
-    loader.classList.toggle('hidden', !yodeling);
+function toggleUI(wobbling) {
+    isWobbling = wobbling;
+    wobbleButton.disabled = wobbling;
+    loader.classList.toggle('hidden', !wobbling);
     errorMessage.classList.add('hidden');
-    yodelButton.textContent = yodeling ? 'Yodeling...' : 'Yodel It!';
+    wobbleButton.textContent = wobbling ? 'Wobbling...' : 'Wobble It!';
 }
 
 function showError(message) {
@@ -34,7 +34,7 @@ function showError(message) {
     errorMessage.classList.remove('hidden');
 }
 
-async function yodelifyText(text) {
+async function wobblifyText(text) {
     toggleUI(true);
 
     try {
@@ -62,7 +62,7 @@ async function yodelifyText(text) {
             .flat();
 
         if (chunks.length === 0) {
-            throw new Error("No yodel-able text found!");
+            throw new Error("No wobble-able text found!");
         }
 
         const audioGenPromises = chunks.map(chunk =>
@@ -74,8 +74,8 @@ async function yodelifyText(text) {
         await playAudioSequentially(audioUrls);
 
     } catch (error) {
-        console.error("Yodeling error:", error);
-        showError("Oops! Something went wrong with the yodel. Please try again.");
+        console.error("Wobble error:", error);
+        showError("Oops! Something went wrong while wobbling. Please try again.");
     } finally {
         toggleUI(false);
     }
@@ -113,4 +113,3 @@ async function playAudioSequentially(urls) {
         }
     }
 }
-
