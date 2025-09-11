@@ -46,12 +46,39 @@ function showError(message) {
     errorMessage.classList.remove('hidden');
 }
 
+async function getNewWordForLetter(letter) {
+    try {
+        const completion = await websim.chat.completions.create({
+            messages: [
+                {
+                    role: 'system',
+                    content: `You are a creative assistant. For the given letter, provide a single, simple, fun, one-syllable word that starts with it. Respond with only JSON in this format: {"word": "your_word"}`
+                },
+                {
+                    role: 'user',
+                    content: letter
+                }
+            ],
+            json: true
+        });
+        const result = JSON.parse(completion.content);
+        // Basic validation, fall back to the original letter if something is wrong
+        if (result && typeof result.word === 'string' && result.word.length > 0) {
+            return result.word.split(/\s+/)[0]; // Ensure it's a single word
+        }
+        return letter;
+    } catch (e) {
+        console.error(`AI word generation failed for letter "${letter}":`, e);
+        return letter; // Fallback to the original letter on error
+    }
+}
+
 async function wobblifyText(text) {
     toggleUI(true);
     lastGeneratedAudio = []; // Clear previous audio
 
     try {
-        const chunks = text
+        const initialChunks = text
             .split(/\s+/)
             .map(word => {
                 // Split word by vowels, keeping the vowels.
@@ -73,6 +100,17 @@ async function wobblifyText(text) {
                 return result.filter(p => p.length > 0);
             })
             .flat();
+
+        const chunkProcessingPromises = initialChunks.map(chunk => {
+             // If it's a single letter, ask AI for a new word.
+            if (chunk.length === 1 && chunk.match(/[a-zA-Z]/)) {
+                return getNewWordForLetter(chunk);
+            }
+            // Otherwise, use the chunk as is.
+            return Promise.resolve(chunk);
+        });
+
+        const chunks = await Promise.all(chunkProcessingPromises);
 
         if (chunks.length === 0) {
             throw new Error("No wobble-able text found!");
