@@ -72,6 +72,34 @@ p {
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
+#audio-controls {
+    margin-top: 20px;
+}
+
+#replay-button {
+    background-color: #3498db;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-family: 'Unkempt', cursive;
+    font-weight: 700;
+    transition: background-color 0.3s, transform 0.1s;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    -webkit-tap-highlight-color: transparent;
+}
+
+#replay-button:hover {
+    background-color: #2980b9;
+}
+
+#replay-button:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
 #wobble-button:disabled {
     background-color: #cccccc;
     cursor: not-allowed;

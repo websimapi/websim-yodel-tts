@@ -2,9 +2,12 @@ const textInput = document.getElementById('text-input');
 const wobbleButton = document.getElementById('wobble-button');
 const loader = document.getElementById('loader');
 const errorMessage = document.getElementById('error-message');
+const audioControls = document.getElementById('audio-controls');
+const replayButton = document.getElementById('replay-button');
 
 let audioContext;
 let isWobbling = false;
+let lastGeneratedAudio = [];
 
 // Initialize AudioContext on user interaction
 function initAudioContext() {
@@ -21,11 +24,20 @@ wobbleButton.addEventListener('click', () => {
     }
 });
 
+replayButton.addEventListener('click', () => {
+    if (!isWobbling && lastGeneratedAudio.length > 0) {
+        playStoredAudio();
+    }
+});
+
 function toggleUI(wobbling) {
     isWobbling = wobbling;
     wobbleButton.disabled = wobbling;
     loader.classList.toggle('hidden', !wobbling);
     errorMessage.classList.add('hidden');
+    if (wobbling) {
+        audioControls.classList.add('hidden');
+    }
     wobbleButton.textContent = wobbling ? 'Wobbling...' : 'Wobble It!';
 }
 
@@ -36,6 +48,7 @@ function showError(message) {
 
 async function wobblifyText(text) {
     toggleUI(true);
+    lastGeneratedAudio = []; // Clear previous audio
 
     try {
         const chunks = text
@@ -71,7 +84,26 @@ async function wobblifyText(text) {
         const ttsResults = await Promise.all(audioGenPromises);
         const audioUrls = ttsResults.map(r => r.url);
         
-        await playAudioSequentially(audioUrls);
+        const audioDataPromises = audioUrls.map(async (url) => {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch audio from ${url}`);
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            return audioContext.decodeAudioData(arrayBuffer);
+        });
+
+        const audioBuffers = await Promise.all(audioDataPromises);
+
+        let isHighPitch = false;
+        audioBuffers.forEach(buffer => {
+            const playbackRate = isHighPitch ? 1.8 : 0.8;
+            lastGeneratedAudio.push({ buffer, playbackRate });
+            isHighPitch = !isHighPitch;
+        });
+        
+        await playStoredAudio();
+        audioControls.classList.remove('hidden');
 
     } catch (error) {
         console.error("Wobble error:", error);
@@ -81,35 +113,26 @@ async function wobblifyText(text) {
     }
 }
 
-async function playAudioSequentially(urls) {
-    if (!audioContext) return;
+async function playStoredAudio() {
+    if (!audioContext || lastGeneratedAudio.length === 0) return;
     if (audioContext.state === 'suspended') {
         await audioContext.resume();
     }
 
-    let isHighPitch = false;
     let scheduledTime = audioContext.currentTime;
 
-    for (const url of urls) {
+    for (const audio of lastGeneratedAudio) {
         try {
-            const response = await fetch(url);
-            const arrayBuffer = await response.arrayBuffer();
-            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
             const source = audioContext.createBufferSource();
-            source.buffer = audioBuffer;
-
-            // Alternate pitch using playbackRate
-            const playbackRate = isHighPitch ? 1.8 : 0.8;
-            source.playbackRate.value = playbackRate;
-            isHighPitch = !isHighPitch;
+            source.buffer = audio.buffer;
+            source.playbackRate.value = audio.playbackRate;
 
             source.connect(audioContext.destination);
             source.start(scheduledTime);
 
-            scheduledTime += audioBuffer.duration / playbackRate;
+            scheduledTime += audio.buffer.duration / audio.playbackRate;
         } catch (e) {
-            console.error('Failed to load or play audio chunk:', e);
+            console.error('Failed to play audio chunk:', e);
         }
     }
 }
